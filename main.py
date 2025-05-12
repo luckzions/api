@@ -116,4 +116,4 @@ def delete_key(key_id: str):
 
 @app.get("/")
 def read_root():
-    return FileResponse("static/index.html")
+    return {"message": "API online"}
