@@ -17,8 +17,6 @@ class Key(BaseModel):
     key: str
     active: bool = True
     created_at: datetime
-    user_agent: str = None
-    ip_address: str = None
     numero: str = None
 
 class RegisterRequest(BaseModel):
@@ -115,9 +113,6 @@ def delete_key(key_id: str):
         raise HTTPException(status_code=404, detail="Key not found")
     del keys_db[key_id]
     return {"detail": "Key deleted"}
-
-# Serve static HTML
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def read_root():
