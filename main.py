@@ -19,17 +19,9 @@ class Key(BaseModel):
     created_at: datetime
     numero: str = None
 
-class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    key: str
-
 class VincularRequest(BaseModel):
     key: str
     numero: str
-
-def generate_new_key() -> str:
-    return str(uuid4())
 
 def is_key_expired(key: Key) -> bool:
     expiration_time = timedelta(hours=1)  # A key expira após 1 hora
@@ -53,11 +45,6 @@ def vincular_key(data: VincularRequest):
 
     key_obj.numero = numero
     return {"message": "Key vinculada com sucesso!", "numero": numero}
-
-@app.get("/get-ip")
-def get_ip(request: Request):
-    ip_address = request.client.host  # Pega o IP do usuário
-    return {"ip": ip_address}
 
 @app.post("/verify-key")
 def verify_key(payload: dict, request: Request):
