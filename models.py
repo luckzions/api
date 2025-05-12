@@ -6,11 +6,12 @@ class Key(BaseModel):
     key: str
     active: bool = True
     created_at: datetime
+    validade_meses: int = 1
     numero: str = None
 
 def generate_new_key() -> str:
     return str(uuid4())
 
 def is_key_expired(key: Key) -> bool:
-    expiration_time = timedelta(hours=1)  # A key expira após 1 hora
-    return datetime.utcnow() - key.created_at > expiration_time
+    validade = timedelta(days=key.validade_meses * 30)  # Aproximadamente 1 mês = 30 dias
+    return datetime.utcnow() - key.created_at > validade

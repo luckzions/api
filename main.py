@@ -1,12 +1,8 @@
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from models import Key, generate_new_key
-from datetime import datetime
 from pydantic import BaseModel
-from uuid import uuid4
 from datetime import datetime, timedelta
-from collections import defaultdict
+from uuid import uuid4
 
 app = FastAPI(title="Key Management API")
 
@@ -17,15 +13,23 @@ class Key(BaseModel):
     key: str
     active: bool = True
     created_at: datetime
+    validade_meses: int = 1
     numero: str = None
 
 class VincularRequest(BaseModel):
     key: str
     numero: str
 
+class VerifyRequest(BaseModel):
+    key: str
+    numero: str
+
 def is_key_expired(key: Key) -> bool:
-    expiration_time = timedelta(hours=1)  # A key expira após 1 hora
-    return datetime.utcnow() - key.created_at > expiration_time
+    validade = timedelta(days=key.validade_meses * 30)  # Aproximadamente 1 mês = 30 dias
+    return datetime.utcnow() - key.created_at > validade
+
+def generate_new_key() -> str:
+    return str(uuid4())
 
 @app.post("/vincular-key")
 def vincular_key(data: VincularRequest):
@@ -47,38 +51,34 @@ def vincular_key(data: VincularRequest):
     return {"message": "Key vinculada com sucesso!", "numero": numero}
 
 @app.post("/verify-key")
-def verify_key(payload: dict, request: Request):
-    key = payload.get("key")
-    
+def verify_key(data: VerifyRequest):
+    key = data.key
+    numero = data.numero
+
     if not key or key not in keys_db:
         raise HTTPException(status_code=403, detail="Invalid key")
-    
+
     key_obj = keys_db[key]
-    
+
     if not key_obj.active:
         raise HTTPException(status_code=403, detail="Key is inactive")
-    
+
     if is_key_expired(key_obj):
-        key_obj.active = False  # Desativa a key se expirou
+        key_obj.active = False
         raise HTTPException(status_code=403, detail="Key has expired")
-    
-    # Coleta o IP e o User-Agent apenas na primeira vez que a key for utilizada
-    if key_obj.user_agent is None or key_obj.ip_address is None:
-        user_agent = request.headers.get("User-Agent")
-        ip_address = request.client.host
-        key_obj.user_agent = user_agent
-        key_obj.ip_address = ip_address
-    
-    # Verifica se o IP e o User-Agent são válidos
-    if key_obj.user_agent != request.headers.get("User-Agent") or key_obj.ip_address != request.client.host:
-        raise HTTPException(status_code=403, detail="Invalid IP or User-Agent")
-    
-    return {"detail": "Key is valid"}
+
+    if not key_obj.numero:
+        raise HTTPException(status_code=403, detail="Key is not linked to any number")
+
+    if key_obj.numero != numero:
+        raise HTTPException(status_code=403, detail="Number does not match linked number")
+
+    return {"detail": "Key is valid", "numero": numero}
 
 @app.post("/keys", response_model=Key)
-def create_key():
+def create_key(validade_meses: int = 1):
     new_key = generate_new_key()
-    key_obj = Key(key=new_key, created_at=datetime.utcnow())
+    key_obj = Key(key=new_key, created_at=datetime.utcnow(), validade_meses=validade_meses)
     keys_db[new_key] = key_obj
     return key_obj
 
