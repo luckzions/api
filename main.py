@@ -3,8 +3,23 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from uuid import uuid4
+import requests
 
 app = FastAPI(title="Key Management API")
+
+API_URL = "https://api-p2i6.onrender.com/"
+
+def manter_api_viva():
+    while True:
+        try:
+            print("👀 Pingando a API para manter ativa...")
+            requests.get(API_URL)
+        except Exception as e:
+            print("Erro ao tentar manter a API viva:", e)
+        time.sleep(600)  # a cada 10 minutos (600 segundos)
+
+# Inicia o pinger em segundo plano
+threading.Thread(target=manter_api_viva, daemon=True).start()
 
 # Banco de dados em memória
 keys_db = {}
