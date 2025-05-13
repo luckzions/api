@@ -51,29 +51,31 @@ def vincular_key(data: VincularRequest):
     return {"message": "Key vinculada com sucesso!", "numero": numero}
 
 @app.post("/verify-key")
-def verify_key(data: VerifyRequest):
-    key = data.key
-    numero = data.numero
+def verify_key(data: dict):
+    key = data.get("key")
 
     if not key or key not in keys_db:
         raise HTTPException(status_code=403, detail="Invalid key")
 
     key_obj = keys_db[key]
 
-    if not key_obj.active:
-        raise HTTPException(status_code=403, detail="Key is inactive")
-
     if is_key_expired(key_obj):
         key_obj.active = False
-        raise HTTPException(status_code=403, detail="Key has expired")
 
-    if not key_obj.numero:
-        raise HTTPException(status_code=403, detail="Key is not linked to any number")
+    dias_restantes = 0
+    if key_obj.active:
+        validade = timedelta(days=key_obj.validade_meses * 30)
+        expiracao = key_obj.created_at + validade
+        dias_restantes = (expiracao - datetime.utcnow()).days
 
-    if key_obj.numero != numero:
-        raise HTTPException(status_code=403, detail="Number does not match linked number")
-
-    return {"detail": "Key is valid", "numero": numero}
+    return {
+        "key": key_obj.key,
+        "numero": key_obj.numero,
+        "ativa": key_obj.active,
+        "criada_em": key_obj.created_at.isoformat(),
+        "validade_meses": key_obj.validade_meses,
+        "dias_restantes": dias_restantes
+    }
 
 @app.post("/keys", response_model=Key)
 def create_key(validade_meses: int = 1):
